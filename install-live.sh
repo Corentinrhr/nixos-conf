@@ -121,16 +121,20 @@ rmdir /mnt/windows-efi
 # 9. SET USER PASSWORD HASH
 # ==========================================
 echo "[9/10] Generating password hash for your main user..."
-HASH="$(nix run nixpkgs#mkpasswd -- -m sha-512)"
+HASH="$(nix --extra-experimental-features "nix-command flakes" run nixpkgs#mkpasswd -- -m sha-512)"
 
-echo "Updating hashedPassword in modules/configuration.nix..."
-sed -i "s|hashedPassword = ".*";|hashedPassword = "${HASH}";|" /mnt/etc/nixos/modules/configuration.nix
+echo "Updating hashedPassword in configuration.nix..."
+sed -i "s|hashedPassword = \".*\";|hashedPassword = \"${HASH}\";|" /mnt/etc/nixos/configuration.nix
+
+# Add all files to git tracking so flake can see them
+cd /mnt/etc/nixos
+git add .
 
 # ==========================================
 # 10. INSTALL NIXOS
 # ==========================================
 echo "[10/10] Installing NixOS..."
-nixos-install --flake "/mnt/etc/nixos#${FLAKE_HOST}"
+NIX_CONFIG="experimental-features = nix-command flakes" nixos-install --flake "/mnt/etc/nixos#${FLAKE_HOST}" --no-root-passwd
 
 echo
 echo "=== Installation completed successfully ==="

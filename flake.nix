@@ -27,7 +27,7 @@
           })
 
           ./hardware-configuration.nix
-          ./modules/configuration.nix
+          ./configuration.nix
 
           lanzaboote.nixosModules.lanzaboote
           nix-flatpak.nixosModules.nix-flatpak

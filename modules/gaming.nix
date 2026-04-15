@@ -10,7 +10,6 @@
 
   programs.gamescope.enable = true;
   programs.gamemode.enable = true;
-  programs.mangohud.enable = true;
 
   hardware.steam-hardware.enable = true;
 }
