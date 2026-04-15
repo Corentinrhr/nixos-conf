@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ==========================================
-# CONFIGURATION
-# ==========================================
 DISK="/dev/nvme0n1"
 WIN_EFI="/dev/nvme1n1p4"
 REPO_URL="https://github.com/Corentinrhr/nixos-conf"
@@ -11,9 +8,11 @@ FLAKE_HOST="nixos"
 
 echo "=== Starting NixOS installation ==="
 
-# ==========================================
-# 1. SAFETY CHECKS
-# ==========================================
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Error: please run this script as root."
+  exit 1
+fi
+
 if ! test -d /sys/firmware/efi/efivars; then
   echo "Error: system was not booted in UEFI mode."
   exit 1
@@ -21,124 +20,95 @@ fi
 
 echo "[1/10] UEFI mode detected."
 
-# ==========================================
-# 2. CONFIRMATION PROMPT
-# ==========================================
-echo ""
+echo
 echo "!!! WARNING: DESTRUCTIVE ACTION !!!"
 echo "Target disk for NixOS: ${DISK}"
 echo "Windows EFI partition: ${WIN_EFI}"
-echo ""
-echo "Current layout of the target disk (${DISK}):"
+echo
+echo "Target disk layout:"
 lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS,MODEL "${DISK}" || true
-echo ""
+echo
+echo "Windows EFI partition:"
+lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS,MODEL "${WIN_EFI}" || true
+echo
 echo "ALL DATA ON ${DISK} WILL BE PERMANENTLY ERASED."
-echo "Your Windows disk will not be wiped, but its EFI bootloader will be copied."
-echo ""
+echo "Windows will not be erased, but its EFI entry may be copied into the NixOS EFI partition."
+echo
 
-read -p "Are you absolutely sure you want to proceed? Type 'YES' in all caps to continue: " CONFIRMATION
-
-if [ "$CONFIRMATION" != "YES" ]; then
-  echo "Aborting installation. No changes were made."
+read -r -p "Type 'YES' in all caps to continue: " CONFIRMATION
+if [ "${CONFIRMATION}" != "YES" ]; then
+  echo "Aborting. No changes were made."
   exit 1
 fi
 
-# ==========================================
-# 3. WIPE TARGET DISK
-# ==========================================
-echo "[3/10] Wiping ${DISK}..."
+echo "[2/10] Wiping target disk..."
 wipefs -af "${DISK}"
 sgdisk --zap-all "${DISK}"
 partprobe "${DISK}"
 
-# ==========================================
-# 4. PARTITIONING
-# ==========================================
-echo "[4/10] Creating GPT partitions..."
+echo "[3/10] Creating partitions..."
 parted -s "${DISK}" mklabel gpt
 parted -s "${DISK}" mkpart ESP fat32 1MiB 1025MiB
 parted -s "${DISK}" set 1 esp on
 parted -s "${DISK}" mkpart primary btrfs 1025MiB 100%
 partprobe "${DISK}"
 
-# ==========================================
-# 5. FORMAT FILESYSTEMS
-# ==========================================
-echo "[5/10] Formatting partitions..."
+echo "[4/10] Formatting filesystems..."
 mkfs.fat -F 32 -n EFI "${DISK}p1"
 mkfs.btrfs -f -L nixos "${DISK}p2"
 
-# ==========================================
-# 6. CREATE BTRFS SUBVOLUMES
-# ==========================================
-echo "[6/10] Creating BTRFS subvolumes..."
+echo "[5/10] Creating Btrfs subvolumes..."
 mount "${DISK}p2" /mnt
-
 btrfs subvolume create /mnt/@
 btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@nix
-
 umount /mnt
 
-echo "[6/10] Mounting BTRFS subvolumes..."
+echo "[6/10] Mounting target filesystem..."
 mount -o subvol=@,compress=zstd,noatime,ssd,discard=async "${DISK}p2" /mnt
 mkdir -p /mnt/{home,nix,boot}
 mount -o subvol=@home,compress=zstd,noatime,ssd,discard=async "${DISK}p2" /mnt/home
 mount -o subvol=@nix,compress=zstd,noatime,ssd,discard=async "${DISK}p2" /mnt/nix
 mount "${DISK}p1" /mnt/boot
 
-# ==========================================
-# 7. GENERATE HARDWARE CONFIG + CLONE REPO
-# ==========================================
 echo "[7/10] Generating hardware configuration..."
 nixos-generate-config --root /mnt
-
 cp /mnt/etc/nixos/hardware-configuration.nix /root/hardware-configuration.nix
 rm -rf /mnt/etc/nixos
 
-echo "[7/10] Cloning configuration repository..."
+echo "[8/10] Cloning configuration repository..."
 git clone "${REPO_URL}" /mnt/etc/nixos
 cp /root/hardware-configuration.nix /mnt/etc/nixos/hardware-configuration.nix
 
-# ==========================================
-# 8. COPY WINDOWS EFI ENTRY
-# ==========================================
-echo "[8/10] Copying Windows EFI files into the NixOS EFI partition..."
+echo "[9/10] Copying Windows EFI files..."
 mkdir -p /mnt/windows-efi
-mount "${WIN_EFI}" /mnt/windows-efi
-
-mkdir -p /mnt/boot/EFI
-if [ -d /mnt/windows-efi/EFI/Microsoft ]; then
-  cp -r /mnt/windows-efi/EFI/Microsoft /mnt/boot/EFI/
+if mount "${WIN_EFI}" /mnt/windows-efi; then
+  mkdir -p /mnt/boot/EFI
+  if [ -d /mnt/windows-efi/EFI/Microsoft ]; then
+    cp -r /mnt/windows-efi/EFI/Microsoft /mnt/boot/EFI/
+  else
+    echo "Warning: Windows EFI files were not found on ${WIN_EFI}."
+  fi
+  umount /mnt/windows-efi
 else
-  echo "Warning: Windows EFI files were not found on ${WIN_EFI}."
+  echo "Warning: could not mount ${WIN_EFI}. Skipping Windows EFI copy."
 fi
+rmdir /mnt/windows-efi || true
 
-umount /mnt/windows-efi
-rmdir /mnt/windows-efi
-
-# ==========================================
-# 9. SET USER PASSWORD HASH
-# ==========================================
-echo "[9/10] Generating password hash for your main user..."
+echo "[10/10] Generating password hash..."
 HASH="$(nix --extra-experimental-features "nix-command flakes" run nixpkgs#mkpasswd -- -m sha-512)"
-
-echo "Updating hashedPassword in configuration.nix..."
 sed -i "s|hashedPassword = \".*\";|hashedPassword = \"${HASH}\";|" /mnt/etc/nixos/configuration.nix
 
-# Add all files to git tracking so flake can see them
 cd /mnt/etc/nixos
-git add .
+git add -A
 
-# ==========================================
-# 10. INSTALL NIXOS
-# ==========================================
-echo "[10/10] Installing NixOS..."
-NIX_CONFIG="experimental-features = nix-command flakes" nixos-install --flake "/mnt/etc/nixos#${FLAKE_HOST}" --no-root-passwd
+echo "Installing NixOS..."
+NIX_CONFIG=$'experimental-features = nix-command flakes\naccept-flake-config = true' \
+nixos-install --flake "/mnt/etc/nixos#${FLAKE_HOST}" --no-root-passwd
 
 echo
 echo "=== Installation completed successfully ==="
 echo "Important:"
-echo "- Keep Secure Boot DISABLED for the first boot."
-echo "- Reboot into your new NixOS installation."
-echo "- Run the post-boot script after logging in."
+echo "- Secure Boot must remain DISABLED for the first boot."
+echo "- The initial install uses systemd-boot only."
+echo "- Run post-boot-secureboot.sh after the first successful login."

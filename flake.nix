@@ -1,5 +1,18 @@
 {
-  description = "NixOS 25.11 stable AMD system with GNOME, CachyOS kernel, Lanzaboote & Flatpak";
+  description = "NixOS 25.11 stable AMD system with GNOME, CachyOS kernel, systemd-boot first, Lanzaboote later, and Flatpak";
+
+  nixConfig = {
+    extra-experimental-features = [ "nix-command" "flakes" ];
+    accept-flake-config = true;
+    extra-substituters = [
+      "https://cache.nixos.org"
+      "https://attic.xuyh0120.win/lantian"
+    ];
+    extra-trusted-public-keys = [
+      "cache.nixos.org-1:6NCHdD59X431o0gWypbVQh5ZPmF2xKQ2r9FzYv6J9c="
+      "lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc="
+    ];
+  };
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
@@ -22,7 +35,7 @@
         modules = [
           ({ ... }: {
             nixpkgs.overlays = [
-              nix-cachyos-kernel.overlays.default
+              nix-cachyos-kernel.overlays.pinned
             ];
           })
 

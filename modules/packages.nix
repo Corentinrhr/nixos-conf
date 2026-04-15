@@ -5,7 +5,9 @@
     git
     wget
     curl
+    nano
     vim
+    fastfetch
     sbctl
     mkpasswd
     pciutils

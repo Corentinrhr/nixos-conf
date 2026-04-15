@@ -1,5 +1,8 @@
 { config, pkgs, lib, ... }:
 
+let
+  useLanzaboote = false;
+in
 {
   imports = [
     ./modules/audio.nix
@@ -12,21 +15,20 @@
     ./modules/tz.nix
   ];
 
-  # Bootloader and Secure Boot
+  # Bootloader
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.efi.efiSysMountPoint = "/boot";
   boot.loader.timeout = 3;
 
-  # Lanzaboote manages the boot chain
-  boot.loader.systemd-boot.enable = lib.mkForce false;
+  boot.loader.grub.enable = false;
+  boot.loader.systemd-boot.enable = lib.mkForce (!useLanzaboote);
 
-  boot.lanzaboote = {
+  boot.lanzaboote = lib.mkIf useLanzaboote {
     enable = true;
     pkiBundle = "/var/lib/sbctl";
   };
 
-  # Windows menu entry
-  # This works when /EFI/Microsoft/Boot/bootmgfw.efi exists on the same ESP mounted at /boot.
+  # Windows entry
   boot.loader.systemd-boot.extraEntries."windows.conf" = ''
     title Windows
     efi /EFI/Microsoft/Boot/bootmgfw.efi
@@ -36,12 +38,11 @@
   networking.hostName = "nixos";
   networking.networkmanager.enable = true;
 
-  # GNOME desktop
+  # Desktop
   services.xserver.enable = true;
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
 
-  # Wayland/Electron quality of life
   environment.sessionVariables = {
     NIXOS_OZONE_WL = "1";
   };
@@ -61,13 +62,9 @@
   hardware.cpu.amd.updateMicrocode = true;
   hardware.bluetooth.enable = true;
 
-  # Firmware updates
   services.fwupd.enable = true;
-
-  # SSD maintenance
   services.fstrim.enable = true;
 
-  # User account
   users.users.pc = {
     isNormalUser = true;
     description = "Main User";
@@ -75,13 +72,12 @@
     hashedPassword = "$6$REPLACE_THIS_WITH_YOUR_HASH";
   };
 
-  # Nix
   nixpkgs.config.allowUnfree = true;
 
-  nix.settings.experimental-features = [
-    "nix-command"
-    "flakes"
-  ];
+  nix.settings = {
+    experimental-features = [ "nix-command" "flakes" ];
+    download-buffer-size = 524288000;
+  };
 
   system.stateVersion = "25.11";
 }
