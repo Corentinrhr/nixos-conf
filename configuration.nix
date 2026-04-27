@@ -47,6 +47,11 @@ in
     NIXOS_OZONE_WL = "1";
   };
 
+  environment.variables = {
+    HSA_OVERRIDE_GFX_VERSION = "12.0.0";
+    ROC_ENABLE_PRE_VEGA = "1";
+  };
+
   xdg.portal.enable = true;
   xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gnome ];
 
@@ -56,6 +61,11 @@ in
   hardware.graphics = {
     enable = true;
     enable32Bit = true;
+    extraPackages = with pkgs; [
+      rocmPackages.clr
+      rocmPackages.rocm-rtio
+      rocmPackages.rocm-compiler
+    ];
   };
 
   hardware.enableRedistributableFirmware = true;
@@ -68,7 +78,7 @@ in
   users.users.pc = {
     isNormalUser = true;
     description = "Main User";
-    extraGroups = [ "networkmanager" "wheel" "video" ];
+    extraGroups = [ "networkmanager" "wheel" "video" "render" ]; 
     hashedPassword = "$6$REPLACE_THIS_WITH_YOUR_HASH";
   };
 

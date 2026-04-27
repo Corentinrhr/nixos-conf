@@ -17,6 +17,7 @@
     mesa-demos
     mangohud
     gamescope
+    llama-cpp
   ];
 
   users.users.pc.packages = with pkgs; [
