@@ -46,7 +46,7 @@ in
   environment.sessionVariables = {
     NIXOS_OZONE_WL = "1";
   };
-
+  
   environment.variables = {
     HSA_OVERRIDE_GFX_VERSION = "12.0.0";
     ROC_ENABLE_PRE_VEGA = "1";
@@ -55,7 +55,7 @@ in
   xdg.portal.enable = true;
   xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gnome ];
 
-  # AMD graphics
+  # AMD graphics & ROCm Compute
   services.xserver.videoDrivers = [ "amdgpu" ];
 
   hardware.graphics = {
@@ -66,6 +66,17 @@ in
       rocmPackages.rocm-rtio
       rocmPackages.rocm-compiler
     ];
+  };
+
+  # Ollama Service (Backend AI)
+  services.ollama = {
+    enable = true;
+    acceleration = "rocm";
+    rocmOverrideGfx = "12.0.0";
+    environmentVariables = {
+      HSA_OVERRIDE_GFX_VERSION = "12.0.0";
+      OLLAMA_LLM_LIBRARY = "rocm";
+    };
   };
 
   hardware.enableRedistributableFirmware = true;

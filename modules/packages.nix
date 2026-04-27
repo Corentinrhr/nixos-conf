@@ -17,7 +17,10 @@
     mesa-demos
     mangohud
     gamescope
-    llama-cpp
+    
+    (llama-cpp.override { 
+      rocmSupport = true; 
+    })
   ];
 
   users.users.pc.packages = with pkgs; [
