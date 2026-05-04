@@ -1,95 +1,49 @@
 { config, pkgs, lib, ... }:
-
-let
-  useLanzaboote = false;
-in
 {
   imports = [
     ./modules/audio.nix
+    ./modules/boot.nix
     ./modules/gaming.nix
+    ./modules/gpu-amd.nix
+    ./modules/ai.nix
     ./modules/kernel.nix
+    ./modules/locale.nix
     ./modules/ntp.nix
     ./modules/packages.nix
     ./modules/security.nix
     ./modules/swap.nix
-    ./modules/tz.nix
   ];
 
-  # Bootloader
-  boot.loader.efi.canTouchEfiVariables = true;
-  boot.loader.efi.efiSysMountPoint = "/boot";
-  boot.loader.timeout = 3;
-
-  boot.loader.grub.enable = false;
-  boot.loader.systemd-boot.enable = lib.mkForce (!useLanzaboote);
-
-  boot.lanzaboote = lib.mkIf useLanzaboote {
-    enable = true;
-    pkiBundle = "/var/lib/sbctl";
-  };
-
-  # Windows entry
-  boot.loader.systemd-boot.extraEntries."windows.conf" = ''
-    title Windows
-    efi /EFI/Microsoft/Boot/bootmgfw.efi
-  '';
-
-  # Host and networking
   networking.hostName = "nixos";
   networking.networkmanager.enable = true;
 
-  # Desktop
+  # Desktop environment
   services.xserver.enable = true;
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
 
-  environment.sessionVariables = {
-    NIXOS_OZONE_WL = "1";
-  };
-  
-  environment.variables = {
-    HSA_OVERRIDE_GFX_VERSION = "12.0.0";
-    ROC_ENABLE_PRE_VEGA = "1";
-  };
-
   xdg.portal.enable = true;
   xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gnome ];
 
-  # AMD graphics & ROCm Compute
-  services.xserver.videoDrivers = [ "amdgpu" ];
-
-  hardware.graphics = {
-    enable = true;
-    enable32Bit = true;
-    extraPackages = with pkgs; [
-      rocmPackages.clr
-      rocmPackages.rocm-rtio
-      rocmPackages.rocm-compiler
-    ];
+  environment.sessionVariables = {
+    NIXOS_OZONE_WL = "1";
   };
 
-  # Ollama Service (Backend AI)
-  services.ollama = {
-    enable = true;
-    acceleration = "rocm";
-    rocmOverrideGfx = "12.0.0";
-    environmentVariables = {
-      HSA_OVERRIDE_GFX_VERSION = "12.0.0";
-      OLLAMA_LLM_LIBRARY = "rocm";
-    };
-  };
-
+  # Hardware
   hardware.enableRedistributableFirmware = true;
   hardware.cpu.amd.updateMicrocode = true;
   hardware.bluetooth.enable = true;
+  hardware.bluetooth.powerOnBoot = true;
 
   services.fwupd.enable = true;
   services.fstrim.enable = true;
 
+  # User
   users.users.pc = {
     isNormalUser = true;
     description = "Main User";
-    extraGroups = [ "networkmanager" "wheel" "video" "render" ]; 
+    extraGroups = [ "networkmanager" "wheel" "video" "render" "gamemode" ];
+    # Generate with: mkpasswd -m sha-512
     hashedPassword = "$6$REPLACE_THIS_WITH_YOUR_HASH";
   };
 
@@ -98,6 +52,15 @@ in
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
     download-buffer-size = 524288000;
+    # Ensure binary caches are trusted from the first build
+    substituters = [
+      "https://cache.nixos.org"
+      "https://nix-community.cachix.org"
+    ];
+    trusted-public-keys = [
+      "cache.nixos.org-1:6NCHdD59X431o0gWypbVQh5ZPmF2xKQ2r9FzYv6J9c="
+      "nix-community.cachix.org-1:mB9FSh9qf2dde0enFANjS37dphqGW/ovD17dBuej"
+    ];
   };
 
   system.stateVersion = "25.11";

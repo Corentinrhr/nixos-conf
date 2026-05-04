@@ -1,20 +1,21 @@
 { config, pkgs, ... }:
-
 {
-  boot.kernelPackages = pkgs.cachyosKernels.linuxPackages-cachyos-latest;
-
-  nix.settings.substituters = [
-    "https://cache.nixos.org"
-    "https://attic.xuyh0120.win/lantian"
-  ];
-
-  nix.settings.trusted-public-keys = [
-    "cache.nixos.org-1:6NCHdD59X431o0gWypbVQh5ZPmF2xKQ2r9FzYv6J9c="
-    "lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc="
-  ];
+  # xanmod_latest: BORE scheduler, full preemption, latency-optimized
+  # Fully binary-cached from nixpkgs - no source compilation
+  boot.kernelPackages = pkgs.linuxPackages_xanmod_latest;
 
   boot.kernelParams = [
+    # Full preemption for low-latency response
     "preempt=full"
+    # Move IRQ handling to threads - reduces latency spikes
     "threadirqs"
+    # AMD-specific: disable IOMMU passthrough issues
+    "amd_iommu=on"
+    "iommu=pt"
+    # CPU frequency: schedutil governor via kernel (set in udev/powertop later)
+    "cpufreq.default_governor=performance"
   ];
+
+  # CPU governor: performance mode for consistent low latency
+  powerManagement.cpuFreqGovernor = "performance";
 }

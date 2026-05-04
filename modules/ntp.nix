@@ -1,5 +1,4 @@
 { config, pkgs, ... }:
-
 {
   services.timesyncd.enable = false;
 
@@ -7,7 +6,8 @@
     enable = true;
     extraConfig = ''
       pool 2.nixos.pool.ntp.org iburst
-      hwtimestamp *
+      makestep 1.0 3
+      rtcsync
     '';
   };
 }

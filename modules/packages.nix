@@ -1,26 +1,16 @@
 { config, pkgs, lib, ... }:
-
 {
   environment.systemPackages = with pkgs; [
-    git
-    wget
-    curl
-    nano
-    vim
-    fastfetch
-    sbctl
-    mkpasswd
-    pciutils
-    usbutils
-    lshw
-    vulkan-tools
-    mesa-demos
+    # System utilities
+    git wget curl nano vim fastfetch
+    sbctl efibootmgr mkpasswd
+    pciutils usbutils lshw
+    # GPU/graphics diagnostics
+    vulkan-tools mesa-demos clinfo
+    # Gaming overlays (system-level; user-level via gaming.nix)
     mangohud
-    gamescope
-    
-    (llama-cpp.override { 
-      rocmSupport = true; 
-    })
+    # Monitoring
+    htop btop nvtopPackages.amd
   ];
 
   users.users.pc.packages = with pkgs; [
@@ -29,19 +19,22 @@
     gnomeExtensions.appindicator
   ];
 
+  # Flatpak: declarative, no third-party flake needed in nixpkgs 25.11
   services.flatpak = {
     enable = true;
-    remotes = lib.mkOptionDefault [
-      {
-        name = "flathub";
-        location = "https://dl.flathub.org/repo/flathub.flatpakrepo";
-      }
-    ];
-    packages = [
-      "com.brave.Browser"
-      "org.videolan.VLC"
-      "dev.vencord.Vesktop"
-      "com.github.iwalton3.jellyfin-media-player"
-    ];
+    # Note: declarative package management in nixpkgs flatpak service
+    # requires manual `flatpak install` or an activation script post-install
+  };
+
+  # Add Flathub remote
+  systemd.user.services.add-flathub = {
+    description = "Add Flathub remote to Flatpak";
+    wantedBy = [ "default.target" ];
+    after = [ "network-online.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.flatpak}/bin/flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo";
+    };
   };
 }
