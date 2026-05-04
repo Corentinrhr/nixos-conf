@@ -27,6 +27,8 @@ hardware-configuration.nix
 /nix/var/nix/gcroots/
 /nix/var/nix/profiles/
 /nix/var/nix/temproot/
+*.lock
+!flake.lock
 
 # ======================================================
 # Personal configuration and secrets
