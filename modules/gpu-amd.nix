@@ -18,7 +18,6 @@
       # Vulkan layers
       vulkan-loader
       vulkan-validation-layers
-      amdvlk                     # AMD's official Vulkan driver (alongside RADV)
     ];
     extraPackages32 = with pkgs.pkgsi686Linux; [
       vulkan-loader
