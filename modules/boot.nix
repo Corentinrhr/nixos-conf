@@ -3,6 +3,7 @@
   # GRUB2 as bootloader — stable, Secure Boot compatible via sbctl
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.efi.efiSysMountPoint = "/boot";
+  boot.loader.timeout = 3;
 
   boot.loader.grub = {
     enable = true;
@@ -10,8 +11,6 @@
     efiSupport = true;
     useOSProber = true;      # Automatically detects Windows on other drives
     enableCryptodisk = false;
-    # Show menu long enough to select Windows
-    timeout = 5;
     # GRUB theme (optional, comment out if not desired)
     splashImage = null;
   };
