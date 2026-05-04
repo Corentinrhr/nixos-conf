@@ -1,20 +1,19 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, ... }:
+
 {
   programs.steam = {
     enable = true;
     remotePlay.openFirewall = true;
-    dedicatedServer.openFirewall = false; # Only enable if you host game servers
+    dedicatedServer.openFirewall = false;
     gamescopeSession.enable = true;
-    # Proton-GE is best managed per-user via ProtonUp-Qt
-    # or Steam's built-in Proton manager
     extraCompatPackages = with pkgs; [
-      proton-ge-bin  # Pre-built, no compilation
+      proton-ge-bin
     ];
   };
 
   programs.gamescope = {
     enable = true;
-    capSysNice = true;  # Allows gamescope to use nice priorities
+    capSysNice = true;
   };
 
   programs.gamemode = {
@@ -33,14 +32,12 @@
 
   hardware.steam-hardware.enable = true;
 
-  # MangoHud: performance overlay
-  programs.mangohud.enable = true;
-
-  # Optional gaming tools
   environment.systemPackages = with pkgs; [
-    lutris          # Multi-platform game manager
-    heroic          # Epic/GOG launcher
-    protonup-qt     # Proton-GE manager (user-space)
+    mangohud      # GPU/CPU overlay (Vulkan + OpenGL)
+    gamescope     # Wayland micro-compositor
+    lutris        # Multi-platform game manager
+    heroic        # Epic / GOG / Amazon Games launcher
+    protonup-qt   # Proton-GE version manager (GUI)
     winetricks
   ];
 }
