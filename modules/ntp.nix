@@ -7,7 +7,6 @@
     extraConfig = ''
       pool 2.nixos.pool.ntp.org iburst
       makestep 1.0 3
-      rtcsync
     '';
   };
 }
