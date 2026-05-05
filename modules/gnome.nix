@@ -8,28 +8,37 @@
 
   programs.dconf.enable = true;
 
-  system.activationScripts.gnomeShortcuts = lib.mkAfter ''
-    export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/1000/bus"
-    export HOME=/home/pc
+  # Apply GNOME shortcuts at user login via a one-shot systemd user service.
+  # This runs as the 'pc' user so dconf schemas are available.
+  systemd.user.services.gnome-custom-shortcuts = {
+    description = "Set GNOME custom keyboard shortcuts";
+    wantedBy = [ "graphical-session.target" ];
+    after = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = let
+        script = pkgs.writeShellScript "set-gnome-shortcuts" ''
+          SCHEMA="org.gnome.settings-daemon.plugins.media-keys"
+          CPATH="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
+          CSCHEMA="org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:$CPATH"
+          SCREENSHOT_DIR="$HOME/Pictures/Screenshots"
 
-    ${pkgs.glib}/bin/gsettings set \
-      org.gnome.settings-daemon.plugins.media-keys \
-      custom-keybindings \
-      "['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/']"
+          CMD="${pkgs.bash}/bin/bash -c '\
+            mkdir -p ${"\${SCREENSHOT_DIR}"} && \
+            F=${"\${SCREENSHOT_DIR}"}/\$(${pkgs.coreutils}/bin/date +%Y-%m-%d_%H-%M-%S).png && \
+            ${pkgs.grim}/bin/grim -g \"\$(${pkgs.slurp}/bin/slurp)\" \$F && \
+            ${pkgs.wl-clipboard}/bin/wl-copy < \$F'"
 
-    BASE="org.gnome.settings-daemon.plugins.media-keys.custom-keybinding"
-    PATH_="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
-
-    ${pkgs.glib}/bin/gsettings set "$BASE:$PATH_" \
-      name "Screenshot region → clipboard + save"
-
-    ${pkgs.glib}/bin/gsettings set "$BASE:$PATH_" \
-      command "bash -c 'mkdir -p \$HOME/Pictures/Screenshots; \
-        F=\$HOME/Pictures/Screenshots/\$(date +%Y-%m-%d_%H-%M-%S).png; \
-        ${pkgs.grim}/bin/grim -g \"\$(${pkgs.slurp}/bin/slurp)\" \$F && \
-        ${pkgs.wl-clipboard}/bin/wl-copy < \$F'"
-
-    ${pkgs.glib}/bin/gsettings set "$BASE:$PATH_" \
-      binding "<Super><Shift>s"
-  '';
+          ${pkgs.glib}/bin/gsettings set $SCHEMA custom-keybindings \
+            "['$CPATH']"
+          ${pkgs.glib}/bin/gsettings set $CSCHEMA name \
+            "Screenshot region → clipboard + save"
+          ${pkgs.glib}/bin/gsettings set $CSCHEMA command "$CMD"
+          ${pkgs.glib}/bin/gsettings set $CSCHEMA binding "<Super><Shift>s"
+        '';
+      in "${script}";
+    };
+  };
 }
