@@ -12,6 +12,7 @@
     ./modules/packages.nix
     ./modules/security.nix
     ./modules/swap.nix
+    ./modules/gnome.nix
   ];
 
   networking.hostName = "nixos";

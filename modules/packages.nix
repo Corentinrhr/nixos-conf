@@ -8,7 +8,6 @@
     unzip zip p7zip
     tree ripgrep fd bat
     gnome-tweaks
-    flameshot
 
     # ── GPU / graphics diagnostics ──────────────────────────────────────────
     vulkan-tools mesa-demos clinfo
