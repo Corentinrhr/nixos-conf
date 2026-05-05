@@ -1,32 +1,65 @@
 { config, pkgs, lib, ... }:
 {
   environment.systemPackages = with pkgs; [
-    # System utilities
+    # ── System utilities ────────────────────────────────────────────────────
     git wget curl nano vim fastfetch
     sbctl efibootmgr mkpasswd
     pciutils usbutils lshw
-    # GPU/graphics diagnostics
+    unzip zip p7zip
+    tree ripgrep fd bat
+
+    # ── GPU / graphics diagnostics ──────────────────────────────────────────
     vulkan-tools mesa-demos clinfo
-    # Gaming overlays (system-level; user-level via gaming.nix)
+
+    # ── Gaming overlays (system-level; per-user also in gaming.nix) ─────────
     mangohud
-    # Monitoring
+
+    # ── Monitoring ──────────────────────────────────────────────────────────
     htop btop nvtopPackages.amd
+
+    # ── Browsers ────────────────────────────────────────────────────────────
+    brave
+    google-chrome
+
+    # ── Editor ──────────────────────────────────────────────────────────────
+    vscodium                  # VSCode without telemetry
+
+    # ── Python dev stack ────────────────────────────────────────────────────
+    python313                 # Latest stable Python
+    python313Packages.pip
+    python313Packages.virtualenv
+    uv                        # Fast Python package manager (replaces pip/venv)
+    ruff                      # Python linter + formatter
+    pyright                   # Python LSP (works in VSCodium)
+
+    # ── General dev tools ────────────────────────────────────────────────────
+    gcc gnumake cmake ninja
+    pkg-config
+    docker-compose
+    jq yq                     # JSON / YAML processors
+    httpie                    # curl with a human face
+    gh                        # GitHub CLI
+    meld                      # Visual diff / merge tool
   ];
 
+  # ── Docker ────────────────────────────────────────────────────────────────
+  virtualisation.docker = {
+    enable = true;
+    enableOnBoot = false;     # Start on demand (socket activation)
+    autoPrune.enable = true;
+  };
+  users.users.pc.extraGroups = [ "docker" ];
+
+  # ── Per-user GNOME packages ───────────────────────────────────────────────
   users.users.pc.packages = with pkgs; [
     gnome-tweaks
     gnome-extension-manager
     gnomeExtensions.appindicator
   ];
 
-  # Flatpak: declarative, no third-party flake needed in nixpkgs 25.11
-  services.flatpak = {
-    enable = true;
-    # Note: declarative package management in nixpkgs flatpak service
-    # requires manual `flatpak install` or an activation script post-install
-  };
+  # ── Flatpak ───────────────────────────────────────────────────────────────
+  services.flatpak.enable = true;
 
-  # Add Flathub remote
   systemd.user.services.add-flathub = {
     description = "Add Flathub remote to Flatpak";
     wantedBy = [ "default.target" ];
