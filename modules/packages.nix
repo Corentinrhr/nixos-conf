@@ -7,6 +7,7 @@
     pciutils usbutils lshw
     unzip zip p7zip
     tree ripgrep fd bat
+    gnome-tweaks
 
     # ── GPU / graphics diagnostics ──────────────────────────────────────────
     vulkan-tools mesa-demos clinfo
